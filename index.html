@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Popstand Git Workflow by popstand</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Popstand Git Workflow</h1>
+        <p>public facing documentation</p>
+
+
+        <p class="view"><a href="https://github.com/popstand">View My GitHub Profile</a></p>
+
+      </header>
+      <section>
+        <p>Following steps should be followed since inception of a feature request or a bug report in our issue tracker till the changes that adress it are deployed to our production infrastructure.</p>
+
+<p>This workflow is based on <a href="https://www.atlassian.com/pt/git/workflows#!workflow-gitflow">GitFlow Workflow</a>. We are using different branch names and structure however to keep the workflow much more easir to understand.</p>
+
+<p>We're using <code>master</code> in place of <code>develop</code> and <code>production</code> in place of <code>master</code>.</p>
+
+<p>Suppose an issue pops up in our issue tracker that clearly describes the feature or bug that has to be addressed. It is assigned to appropriate developer and is marked <strong>Ready for Development</strong>. Following are steps for different individuals in the lifecycle of the issue as they come in contact of the issue.</p>
+
+<h3>
+<a id="developer" class="anchor" href="#developer" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Developer</h3>
+
+<p>A. The assigned developer creates a feature branch in the form of <code>XXX-some_description</code> off of <code>master</code>. Here <code>XXX</code> is the issue number e.g. <code>bilz-12</code>. This branch will accumulate all the commits addressing the issue in context.</p>
+
+<pre><code>master&gt; git checkout -b bilz-12-user_registration
+</code></pre>
+
+<p>B. The developer starts working on the issue after understanding all the requirements and keeps pushing to the feature branch created in above step. S/he marks the issue to be <strong>In Development</strong></p>
+
+<pre><code>bilz-12-user_registration&gt; git commit -m "Work done!"
+</code></pre>
+
+<p>C. Once the developer is done with the work, s/he pushes the feature branch to origin and initiates a Pull Request with <code>master</code> as its base. The developer assigns the issue to someone appropriate and marks the issue to be in <strong>Needs Code Review</strong> phase.</p>
+
+<pre><code>bilz-12-user_registration&gt; git push origin bilz-12-user_registration
+</code></pre>
+
+<p>D. Code reviewer reviews the code while making sure that all the tests pass and presense of test cases for new changes. If the review is not good, reviewer assigns the issue back to the developer with appropriate comments and marks the issue to be in <strong>Ready for Development</strong> phase again. The developer now starts at step <strong>B</strong> again.</p>
+
+<p>E. If the review is okay, the <strong>original developer</strong> should merge the feature branch in <code>master</code> using following flow <strong>after</strong> <a href="http://gitready.com/advanced/2009/02/10/squashing-commits-with-rebase.html">squashing</a> all the new commits in a single commit. The issuse should now be marked <strong>Ready for Staging</strong> and assigned to a QA. If necessary, the developer should put a comment describing what part of the application should be tested and exactly how.</p>
+
+<pre><code>git checkout bilz-12-user_registration      # Checkout the feature bra
+git rebase -i HEAD~n                    # Squash all the commits. #n is the number of **new** commits on this branch.
+git checkout master              
+git pull origin master                  # Update master
+git checkout bilz-12-user_registration      # Checkout the feature branch.
+git rebase master                       # Rebase feature branch with master. Follow the rebase instructions to fix any conflicts.
+git push -f origin bilz-12-user_registration # Update the pull request with rebased code.
+git checkout master              
+git merge bilz-12-user_registration         # Merge feature into master.
+git push origin master                  # Push the code changes to origin.
+</code></pre>
+
+<p><strong>NOTE:</strong> Squashing commits is extremely necessary. Unsquashed commits are very difficult to release to production because we can not revert them easily in case hell breaks upon us.</p>
+
+<p>F. An automated or manual system should deploy the <code>master</code> branch to our staging infrastructure. All the issues currently marked <strong>Ready for Staging</strong> should be marked <strong>Ready for Testing</strong>.</p>
+
+<p>G. QA should perform test on all the issues that are <strong>Ready for Testing</strong> and mark those as <strong>In Testing</strong>. if QA is not good, the issue is marked as <strong>Ready for Development</strong> and original developer start at step <strong>B</strong> again.</p>
+
+<p>H. If the QA is good, the feature branch should be deleted from the repository and QA should mark the issue as <strong>Ready for Production</strong> and assign the issue to a Release Manager.</p>
+
+<hr>
+
+<h3>
+<a id="releasing-code-to-production" class="anchor" href="#releasing-code-to-production" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Releasing Code to Production</h3>
+
+<p>When satisfactory number of issues in our tracker have been marked as <strong>Ready for Production</strong>, a release manager should deploy the changes to production infrastructure by following steps below.</p>
+
+<p>I. The Release Manager should create a new release branch off of <code>master</code> and give it an appropriate name in the form of <code>release-XYZ</code> where <code>XYZ</code> gives a meaningful name to the group of issues being released. The Release Manager makes sure all the automated tests pass. In case those don't, S/he should look out for appropriate developer who worked in the area in which the test is failing.</p>
+
+<pre><code>master&gt; git checkout -b release-user_registration
+release-user_registration&gt; git push origin release-user_registration
+</code></pre>
+
+<p>J. In case the tests are failing or a bug crops up related to any issue being released, a new issue should be opened in the tracker and all the steps should be followed starting step <strong>A</strong> except in place of <code>master</code> current release branch should be used.</p>
+
+<p>K. In case everything looks good, the release branch should be merged to <code>production</code>. An annotated tag should be made with an appropriate version number that follows <a href="http://semver.org">Semantic Versioning Scheme</a>. This tag should be deployed to production infrastructure. The tag message should contain links to all the issues being deployed with this tag.</p>
+
+<pre><code>production&gt; git tag -a 0.0.1
+production&gt; git push --tags
+</code></pre>
+
+<p>L. The release branch should be merged back to <code>master</code>.</p>
+
+<pre><code>master&gt; git merge release-user_registration
+</code></pre>
+
+<p>M. The release branch should be deleted from repository.</p>
+
+<p>N. All the "Ready for Production" issues should be marked <strong>On Production</strong> and assigned to QA.</p>
+
+<p>O. QA should do a smoke test all the issues and mark the issues as <strong>Fixed</strong>. In case a new bug is found, it should be put it in the queue of next or another appropriate release cycle.</p>
+
+<h3>
+<a id="hot-fixes" class="anchor" href="#hot-fixes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Hot Fixes</h3>
+
+<p>In a critical bug pops up on production following steps should be taken to fix it.</p>
+
+<p>P. A new branch is created off of <code>production</code> and all the commits are made in this branch.</p>
+
+<pre><code>production&gt; git checkout -b bilz-34-username_unique
+</code></pre>
+
+<p>Q. After code review and QA this branch is merged in <code>production</code> directly and a new tag is deployed to production infrastructure.</p>
+
+<pre><code>production&gt; git merge bilz-34-username_unique
+production&gt; bundle exec cap deploy production
+</code></pre>
+
+<p>R. This branch is merged back <code>master</code> and deleted.</p>
+
+<pre><code>master&gt; git merge bilz-34-username_unique
+</code></pre>
+
+<hr>
+
+<h2>
+<a id="guidelines" class="anchor" href="#guidelines" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Guidelines</h2>
+
+<p>There are a few guidelines that should be followed before committing your code changes to the repository.</p>
+
+<h3>
+<a id="jira-issue-number-in-every-feature-branch" class="anchor" href="#jira-issue-number-in-every-feature-branch" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>JIRA Issue Number in Every Feature Branch</h3>
+
+<p>Every feature branch should have the JIRA issue number as its prefix. e.g. if you're working on the issue named <code>BILZ-23</code> which pertains to user registration, you should call your branch <code>bilz-23-user_registration</code>.</p>
+
+<p>This practice right away tells us the issue which is being worked on the feature branch and lets us organize our branches for relase easily.</p>
+
+<h3>
+<a id="jira-issue-number-in-every-commit-message" class="anchor" href="#jira-issue-number-in-every-commit-message" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>JIRA Issue number in every commit message</h3>
+
+<p><em>TL;DR:</em> A JIRA issue number should be present in every commit message. Suppose you're working on an issue which has number <code>BILZ-10</code>, every commit that you make should have that issue number somewhere in the commit message.</p>
+
+<p>e.g. `git commit -m "(BILZ-23) User may now register".</p>
+
+<p>Although we try to make sure that our commit messages are explanative but sometimes we do not write good commit messages. "Fixes" and "Some minor refactorings" are not good commit messages. Therefore we must add a JIRA issue number with every commit message. JIRA links the issue number with the corresponding issue in this project's issue list. This way even if a commit that does not have a good commit message, will lead to a JIRA issue. That issue will have explanation for which the commit was made. We can find out the reasons for which a change in code took place at any point of time.</p>
+
+<p>One can put issue number anywhere in the commit message. But it is advised to put it at the beginning or at the end of the message. I(Waseem) myself prefer at the beginning of the message. Following is an example of a good commit message with issue number.</p>
+
+<p>"(BILZ-23) Adds User#surf." OR "Refactors App.Models.Storybook BILZ-23"</p>
+
+<p>The string that describes issue number should be of the form "ISSUE #XXX" where XXX is the issue number. It's important that we have a # before the number string else Github wont link it with corresponding issue.</p>
+
+<p>Remember a good commit message reflects a developer's good intentions. Including an issue number is not a substitute for a bad commit message.</p>
+      </section>
+      <footer>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
